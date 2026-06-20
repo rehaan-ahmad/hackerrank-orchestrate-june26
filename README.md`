@@ -1,0 +1,99 @@
+# 🛡️ ClaimVerify AI: Multi-Modal Evidence Review System
+
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Gemini 2.0](https://img.shields.io/badge/AI-Gemini--2.0--Flash-orange.svg)
+![Status](https://img.shields.io/badge/Status-Production--Ready-success.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+
+**ClaimVerify AI** is a high-precision, multi-modal automated insurance claim verification system. It leverages state-of-the-art Large Multimodal Models (LMMs) to cross-reference user chat transcripts, submitted photographic evidence, and historical user risk profiles to determine the validity of damage claims.
+
+## 🚀 The Challenge
+Insurance companies face a massive volume of claims where visual evidence is often insufficient, contradictory, or manipulated. Manually reviewing thousands of images is slow and prone to human error. 
+
+**Our Goal:** Automate the decision-making process for `Cars`, `Laptops`, and `Packages` with an "Adjuster-grade" level of scrutiny.
+
+---
+
+## 🧠 The Approach
+
+### 1. Contextual Fusion
+Instead of analyzing images in isolation, ClaimVerify AI builds a **360-degree context window** for every claim:
+- **Visual Evidence:** Direct pixel analysis of submitted images.
+- **Conversational Intent:** Extracting the specific damage claim from chat logs.
+- **Regulatory Guardrails:** Applying `evidence_requirements.csv` to ensure the *right* images were taken.
+- **Risk Profiling:** Integrating `user_history.csv` to flag high-risk patterns or fraudulent behavior.
+
+### 2. The "Adjuster" Pipeline
+The system follows a strict reasoning chain:
+`Extract Claim` $\rightarrow$ `Verify Evidence Standards` $\rightarrow$ `Visual Analysis` $\rightarrow$ `Risk Assessment` $\rightarrow$ `Final Verdict`.
+
+### 3. Robust Execution Engine
+To handle the volatility of LLM APIs, the engine features:
+- **Checkpointing:** Real-time saving of results to prevent data loss during crashes.
+- **Adaptive Backoff:** Intelligent exponential retries for API rate limits (429s).
+- **Schema Enforcement:** Strict JSON parsing to ensure the output perfectly matches the required insurance CSV format.
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Core AI** | `Gemini 2.0 Flash` | Multi-modal reasoning & JSON extraction |
+| **Language** | `Python 3.14` | Pipeline orchestration |
+| **Data Handling** | `Pandas` | CSV processing & data manipulation |
+| **Environment** | `python-dotenv` | Secure API key management |
+| **Logging** | `Python Logging` | Real-time telemetry & error tracking |
+
+---
+
+## 📈 Current Processing Flow
+
+```mermaid
+graph TD
+    A[claims.csv] --> B{Context Engine}
+    B --> C[User History]
+    B --> D[Evidence Requirements]
+    B --> E[Chat Transcripts]
+    C & D & E --> F[Gemini 2.0 Flash]
+    G[Images] --> F
+    F --> H[Structured JSON Verdict]
+    H --> I[output.csv]
+```
+
+---
+
+## 🔮 Future Scope
+- [ ] **Confidence Scoring:** Implement a confidence threshold for each verdict; flag low-confidence claims for human review.
+- [ ] **Image Quality Analysis:** Add a dedicated pre-processing layer to detect blur, glare, or AI-generated (deepfake) damage.
+- [ ] **Batch Processing:** Optimize token usage by batching multiple claims into a single model call.
+- [ ] **Dynamic Prompting:** Use a few-shot approach by feeding the model successful examples from `sample_claims.csv`.
+
+---
+
+## ⚙️ Getting Started
+
+### Installation
+```bash
+git clone https://github.com/your-username/hackerrank-orchestrate-june26.git
+cd hackerrank-orchestrate-june26
+pip install -r requirements.txt
+```
+
+### Configuration
+Create a `.env` file in the root directory:
+```env
+GEMINI_API_KEY=your_secret_key_here
+```
+
+### Execution
+```bash
+python3 code/main.py
+```
+
+---
+
+## 📜 License
+Distributed under the MIT License. See `LICENSE` for more information.
+
+**Built with ⚡ and 🤖 for the HackerRank Orchestrate Challenge.**

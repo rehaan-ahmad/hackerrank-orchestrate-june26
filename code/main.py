@@ -100,7 +100,7 @@ def process_claim(model, row, history_df, reqs_df):
     }}
     """
     
-    max_retries = 3
+    max_retries = 5
     for attempt in range(max_retries):
         try:
             content = [prompt] + images
@@ -116,7 +116,8 @@ def process_claim(model, row, history_df, reqs_df):
             return {**row, **res_json}
         except Exception as e:
             if "429" in str(e):
-                wait_time = (2 ** attempt) + uniform(0, 1)
+                # More aggressive backoff: 5s, 10s, 20s, 40s, 80s...
+                wait_time = (5 * (2 ** attempt)) + uniform(0, 2)
                 logger.warning(f"Quota exceeded. Retrying in {wait_time:.2f}s... (Attempt {attempt+1}/{max_retries})")
                 time.sleep(wait_time)
             else:
@@ -146,26 +147,47 @@ def main():
         logger.error(f"Initialization failed: {e}")
         return
 
+    # Check for existing progress
     results = []
-    total = len(claims_df)
-    for i, row in claims_df.iterrows():
-        logger.info(f"Processing claim {i+1}/{total} (User: {row['user_id']})")
-        results.append(process_claim(model, row, history_df, reqs_df))
-        # Respect basic rate limits for free tier
-        time.sleep(2) 
-    
-    output_df = pd.DataFrame(results)
-    cols = [
-        'user_id', 'image_paths', 'user_claim', 'claim_object', 'evidence_standard_met', 
-        'evidence_standard_met_reason', 'risk_flags', 'issue_type', 'object_part', 
-        'claim_status', 'claim_status_justification', 'supporting_image_ids', 'valid_image', 'severity'
-    ]
-    for col in cols:
-        if col not in output_df.columns:
-            output_df[col] = 'unknown' if col != 'evidence_standard_met' else False
+    start_index = 0
+    if os.path.exists('output.csv'):
+        try:
+            existing_df = pd.read_csv('output.csv')
+            # We can determine progress by checking how many rows have successful outcomes
+            # or simply how many rows are in the file if we process sequentially.
+            start_index = len(existing_df)
+            results = existing_df.to_dict('records')
+            logger.info(f"Resuming from index {start_index}. Found {start_index} previously processed claims.")
+        except Exception as e:
+            logger.warning(f"Could not load existing output.csv, starting fresh: {e}")
 
-    output_df[cols].to_csv('output.csv', index=False)
-    logger.info("Successfully generated output.csv")
+    total = len(claims_df)
+    # Only process remaining claims
+    for i in range(start_index, total):
+        row = claims_df.iloc[i]
+        logger.info(f"Processing claim {i+1}/{total} (User: {row['user_id']})")
+        result = process_claim(model, row, history_df, reqs_df)
+        results.append(result)
+        
+        # Save after every single claim to prevent data loss
+        temp_df = pd.DataFrame(results)
+        cols = [
+            'user_id', 'image_paths', 'user_claim', 'claim_object', 'evidence_standard_met', 
+            'evidence_standard_met_reason', 'risk_flags', 'issue_type', 'object_part', 
+            'claim_status', 'claim_status_justification', 'supporting_image_ids', 'valid_image', 'severity'
+        ]
+        # Ensure columns exist
+        for col in cols:
+            if col not in temp_df.columns:
+                temp_df[col] = 'unknown' if col != 'evidence_standard_met' else False
+        
+        temp_df[cols].to_csv('output.csv', index=False)
+        
+        # Increased delay to better respect Free Tier RPM/TPM limits
+        time.sleep(5) 
+    
+    logger.info("Successfully completed processing and generated output.csv")
+
 
 if __name__ == "__main__":
     main()
